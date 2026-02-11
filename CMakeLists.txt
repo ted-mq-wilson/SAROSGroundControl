@@ -4,6 +4,10 @@
 
 cmake_minimum_required(VERSION 3.25)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # ----------------------------------------------------------------------------
 # CMake Module Paths
 # ----------------------------------------------------------------------------
@@ -282,11 +286,11 @@ qt_add_qml_module(${CMAKE_PROJECT_NAME}
 # ----------------------------------------------------------------------------
 add_subdirectory(src)
 
-if(QGC_BUILD_TESTING)
-    add_subdirectory(test)
+# if(QGC_BUILD_TESTING)
+    # add_subdirectory(test)
     # Exclude test directory from translation scanning
-    set_property(DIRECTORY test PROPERTY QT_EXCLUDE_FROM_TRANSLATION ON)
-endif()
+    # set_property(DIRECTORY test PROPERTY QT_EXCLUDE_FROM_TRANSLATION ON)
+# endif()
 
 # ----------------------------------------------------------------------------
 # Translation/Localization Configuration

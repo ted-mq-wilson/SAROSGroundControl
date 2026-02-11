@@ -2683,3 +2683,16 @@ void MissionController::setGlobalAltitudeMode(QGroundControlQmlGlobal::AltMode a
         emit globalAltitudeModeChanged();
     }
 }
+
+void MissionController::addMissionWaypoint(const QGeoCoordinate& coordinate)
+{
+    VisualMissionItem* item = insertSimpleMissionItem(
+        coordinate,
+        -1,
+        true
+    );
+
+    // // This ensures the mission updates and sends to the vehicle
+    // emit newVisualMissionItem(item);
+    // sendNewMissionToVehicle();
+}

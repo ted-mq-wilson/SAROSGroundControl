@@ -186,6 +186,10 @@ public:
 
     Q_INVOKABLE SendToVehiclePreCheckState sendToVehiclePreCheck(void);
 
+    /// Adds waypoints to the mission plan so that multiple waypoints can be visited at once
+    ///     @param coordinate - The coordinate to be appended onto the mission plan
+    Q_INVOKABLE void addMissionWaypoint(const QGeoCoordinate& coordinate);
+
     /// Determines if the mission has all data needed to be saved or sent to the vehicle.
     /// IMPORTANT NOTE: The return value is a VisualMissionItem::ReadForSaveState value. It is an int here to work around
     /// a nightmare of circular header dependency problems.

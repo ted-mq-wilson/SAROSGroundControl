@@ -39,6 +39,8 @@ FlightMap {
     property bool   _keepVehicleCentered:       pipMode ? true : false
     property bool   _saveZoomLevelSetting:      true
 
+    property var addedWaypoints:    []
+
     function _adjustMapZoomForPipMode() {
         _saveZoomLevelSetting = false
         if (pipMode) {
@@ -223,6 +225,10 @@ FlightMap {
         }
     }
 
+    // Component.onCompleted: {
+    //     console.log("missionController: ", _missionController)
+    // }
+
     MapFitFunctions {
         id:                         mapFitFunctions // The name for this id cannot be changed without breaking references outside of this code. Beware!
         map:                        _root
@@ -354,6 +360,47 @@ FlightMap {
             z:              QGroundControl.zOrderTopMost
         }
     }
+
+    // // --- Visualize queued waypoints ---
+    // MapItemView {
+    //     model: pendingWaypoints
+    //     delegate: MapQuickItem {
+    //         // Use the coordinate from the ListModel
+    //         coordinate: model.coordinate
+    //         anchorPoint.x: 9
+    //         anchorPoint.y: 9
+
+    //         sourceItem: Column {
+    //             Rectangle {
+    //                 width: 18
+    //                 height: 18
+    //                 radius: 9
+    //                 color: "orange"
+    //             }
+    //             Text {
+    //                 text: index + 1
+    //                 color: "white"
+    //                 anchors.centerIn: parent
+    //             }
+    //         }
+    //     }
+    // }
+
+    // // --- Draw line connecting the queued waypoints ---
+    // MapPolyline {
+    //     id: queuedWaypointLine
+    //     line.width: 2
+    //     line.color: "orange"
+
+    //     // Generate a list of coordinates from the ListModel
+    //     path: {
+    //         var coords = [];
+    //         for (var i = 0; i < pendingWaypoints.count; i++) {
+    //             coords.push(pendingWaypoints.get(i).coordinate);
+    //         }
+    //         return coords;
+    //     }
+    // }
 
     // GoTo Location forward flight circle visuals
     QGCMapCircleVisuals {
@@ -672,7 +719,7 @@ FlightMap {
                         onClicked: {
                             mapClickDropPanel.close()
                             gotoLocationItem.show(mapClickCoord)
-
+                            console.log(mapClickCoord)
                             if ((_activeVehicle.flightMode == _activeVehicle.gotoFlightMode) && !_flyViewSettings.goToLocationRequiresConfirmInGuided.value) {
                                 globals.guidedControllerFlyView.executeAction(globals.guidedControllerFlyView.actionGoto, mapClickCoord, gotoLocationItem)
                                 gotoLocationItem.actionConfirmed() // Still need to call this to commit the new coordinate and radius
@@ -733,6 +780,173 @@ FlightMap {
                         }
                     }
 
+                    QGCButton {
+                        Layout.fillWidth:   true
+                        text:               qsTr("Add Waypoint")
+                        // visible:            true
+                        onClicked: {
+                            if (!mapClickCoord) {
+                                return
+                            }
+
+                            addedWaypoints.push(mapClickCoord)
+                            console.log("Added Waypoint: ", mapClickCoord)
+
+                            mainWindow.showMessageDialog(
+                                qsTr("Waypoint Added"),
+                                qsTr("Added Waypoint %1 at (%2, %3)")
+                                    .arg(addedWaypoints.length)
+                                    .arg(mapClickCoord.latitude.toFixed(6))
+                                    .arg(mapClickCoord.longitude.toFixed(6))
+                            )
+                        }
+                    }
+
+                    QGCButton {
+                        text: qsTr("Add Waypoints to Mission")
+                        Layout.fillWidth: true
+
+                        onClicked: {
+
+                            if (!_missionController || addedWaypoints.length === 0) {
+                                mainWindow.showMessageDialog(
+                                    qsTr("Mission Error"),
+                                    qsTr("No waypoints to add")
+                                )
+                                return
+                            }
+
+                            console.log("Clearing mission")
+                            _planMasterController.removeAll()
+
+                            Qt.callLater(function () {
+
+                                console.log("Adding takeoff")
+                                _missionController.insertTakeoffItem(
+                                    _activeVehicle.homePosition, 0, true
+                                )
+
+                                for (var i = 0; i < addedWaypoints.length; i++) {
+                                    var coord = addedWaypoints[i]
+                                    console.log("Adding WP:", coord.latitude, coord.longitude)
+
+                                    _missionController.insertSimpleMissionItem(
+                                        coord, -1, true
+                                    )
+                                }
+
+                                console.log("Uploading mission...")
+                                _planMasterController.sendToVehicle()
+                            })
+                        }
+                    }
+
+                    QGCButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Arm Vehicle")
+
+                        onClicked: {
+                            if (!_activeVehicle) {
+                                mainWindow.showMessageDialog(qsTr("Error"), qsTr("No active vehicle"))
+                                return
+                            }
+
+                            if (_activeVehicle.armed) {
+                                console.log("Vehicle already armed")
+                                return
+                            }
+
+                            console.log("Arming vehicle...")
+                            _activeVehicle.armed = true
+
+                            Qt.callLater(function() {
+                                if (_activeVehicle.armed) {
+                                    console.log("Vehicle armed successfully")
+                                } else {
+                                    mainWindow.showMessageDialog(qsTr("Arm Error"), qsTr("Vehicle failed to arm"))
+                                }
+                            })
+                        }
+                    }
+
+                    QGCButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Takeoff to 10ft")
+
+                        onClicked: {
+                            if (!_activeVehicle || !_activeVehicle.armed) {
+                                mainWindow.showMessageDialog(qsTr("Error"), qsTr("Vehicle must be armed first"))
+                                return
+                            }
+
+                            // Switch to GUIDED for takeoff
+                            var guidedMode = (_activeVehicle.firmwareType === "PX4") ? "GUIDED" : "GUIDED"
+                            console.log("Switching to GUIDED mode for takeoff:", guidedMode)
+                            _activeVehicle.flightMode = guidedMode
+
+                            // Command takeoff
+                            console.log("Commanding takeoff to 10m")
+                            globals.guidedControllerFlyView.executeAction(
+                                globals.guidedControllerFlyView.actionTakeoff,
+                                10
+                            )
+
+                            // Check if vehicle is airborne
+                            var takeoffCheck = Qt.createQmlObject('import QtQuick 2.0; Timer { interval: 500; repeat: true; running: true; onTriggered: { if (_activeVehicle.altitudeRelative > 1) { stop(); console.log("Vehicle is in air") } } }', mainWindow)
+                        }
+                    }
+
+                    QGCButton {
+                        text: qsTr("Start Mission")
+                        Layout.fillWidth: true
+
+                        onClicked: {
+
+                            if (!_activeVehicle) {
+                                console.log("No active vehicle")
+                                return
+                            }
+
+                            console.log("Waiting for mission on vehicle...")
+
+                            var missionCheck = Qt.createQmlObject(`
+                                import QtQuick 2.0
+                                Timer {
+                                    interval: 500
+                                    repeat: true
+                                    running: true
+                                    onTriggered: {
+                                        if (_activeVehicle.missionItemCount > 0) {
+                                            stop()
+                                            console.log("Mission confirmed onboard")
+
+                                            _activeVehicle.flightMode = "AUTO"
+
+                                            Qt.callLater(function () {
+
+                                                _activeVehicle.armed = true
+
+                                                Qt.callLater(function () {
+                                                    _activeVehicle.startMission()
+                                                    console.log("Mission started")
+                                                })
+                                            })
+                                        }
+                                    }
+                                }
+                            `, mainWindow)
+                        }
+                    }
+
+                    QGCButton {
+                        text: qsTr("Clear WayPoints")
+                        Layout.fillWidth: true
+
+                        onClicked: {
+                            addedWaypoints = []
+                        }
+                    }
+
                     ColumnLayout {
                         spacing: 0
                         QGCLabel { text: qsTr("Lat: %1").arg(mapClickCoord.latitude.toFixed(6)) }
@@ -742,6 +956,8 @@ FlightMap {
             }
         }
     }
+
+
 
     onMapClicked: (position) => {
         if (!globals.guidedControllerFlyView.guidedUIVisible &&
