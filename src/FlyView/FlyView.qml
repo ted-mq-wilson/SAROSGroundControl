@@ -17,6 +17,7 @@ import QGroundControl.Viewer3D
 
 Item {
     id: _root
+    focus: true
 
     // These should only be used by MainRootWindow
     property var planController:    _planController

@@ -3733,6 +3733,10 @@ void Vehicle::clearAllParamMapRC(void)
 
 void Vehicle::sendJoystickDataThreadSafe(float roll, float pitch, float yaw, float thrust, quint16 buttons, quint16 buttons2, float gimbalPitch, float gimbalYaw)
 {
+    if (!armed()) {
+        thrust = 0.0f;   // Neutral in -1:1 space
+    }
+
     SharedLinkInterfacePtr sharedLink = vehicleLinkManager()->primaryLink().lock();
     if (!sharedLink) {
         qCDebug(VehicleLog)<< "sendJoystickDataThreadSafe: primary link gone!";
