@@ -40,4 +40,6 @@ qt_add_qml_module(FlightMapModule
         FlightMap.qml
         MapScale.qml
     NO_PLUGIN
+    SOURCES
+    SOURCES
 )

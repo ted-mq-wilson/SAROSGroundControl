@@ -1,4 +1,4 @@
-#include "Vehicle.h"
+// #include "Vehicle.h"
 #include "Actuators.h"
 #include "ADSBVehicleManager.h"
 #include "AudioOutput.h"
@@ -48,6 +48,8 @@
 #include "GimbalController.h"
 #include "MavlinkSettings.h"
 #include "APM.h"
+
+#include <QDebug> // Temporary for debug message outputs with mavlink messages (TODO remove at some point later)
 
 #ifdef QGC_UTM_ADAPTER
 #include "UTMSPVehicle.h"
@@ -107,6 +109,7 @@ Vehicle::Vehicle(LinkInterface*             link,
     , _rpmFactGroup                 (this)
     , _terrainFactGroup             (this)
     , _terrainProtocolHandler       (new TerrainProtocolHandler(this, &_terrainFactGroup, this))
+    , _heatmapController            (new HeatmapController(this))
 {
     connect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged, this, &Vehicle::_activeVehicleChanged);
 
@@ -125,6 +128,18 @@ Vehicle::Vehicle(LinkInterface*             link,
     connect(MultiVehicleManager::instance(), &MultiVehicleManager::parameterReadyVehicleAvailableChanged, this, &Vehicle::_vehicleParamLoaded);
 
     connect(this, &Vehicle::remoteControlRSSIChanged,   this, &Vehicle::_remoteControlRSSIChanged);
+
+    connect(this,
+            &Vehicle::probabilityReceived,
+            this,
+            [this](float prob) {
+
+                auto coord = this->coordinate();
+
+                _heatmapController->addPoint(coord.latitude(),
+                                             coord.longitude(),
+                                             prob);
+            });
 
     _commonInit(link);
 
@@ -436,6 +451,32 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
     //-- Check link status
     _messagesReceived++;
     emit messagesReceivedChanged();
+
+    // qDebug() << "MavLink message recieved: "
+    //          << "ID: " << message.msgid
+    //          << "SYS: " << message.sysid
+    //          << "COMP: " << message.compid
+    //          << "LEN: " << message.len;
+
+    if (message.msgid == MAVLINK_MSG_ID_NAMED_VALUE_FLOAT) {
+        mavlink_named_value_float_t data;
+        mavlink_msg_named_value_float_decode(&message, &data);
+
+        QString name = QString::fromLatin1(data.name);
+        float value = data.value;
+
+        qDebug() << "Received float:" << name << value;
+
+        if (name == "prob" && _coordinate.isValid()) { // TODO: rename based on the name of the send value
+            float probability = data.value;
+
+            double lat = _coordinate.latitude();
+            double lon = _coordinate.longitude();
+
+            emit probabilityReceived(lat, lon, probability);
+        }
+    }
+
     if(!_heardFrom) {
         if(message.msgid == MAVLINK_MSG_ID_HEARTBEAT) {
             _heardFrom  = true;

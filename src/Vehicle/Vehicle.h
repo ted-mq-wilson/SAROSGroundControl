@@ -39,6 +39,8 @@
 #include "BatteryFactGroupListModel.h"
 #include "EscStatusFactGroupListModel.h"
 
+#include "HeatmapController.h"
+
 class Actuators;
 class AutoPilotPlugin;
 class Autotune;
@@ -276,6 +278,10 @@ public:
     Q_PROPERTY(QString  vehicleUIDStr               READ vehicleUIDStr              NOTIFY vehicleUIDChanged)
 
     Q_PROPERTY(bool     mavlinkSigning              READ mavlinkSigning             NOTIFY mavlinkSigningChanged)
+
+
+    Q_PROPERTY(QObject* heatmapController           READ heatmapController          CONSTANT)
+
 
     /// Resets link status counters
     Q_INVOKABLE void resetCounters  ();
@@ -559,6 +565,8 @@ public:
     bool            hilMode                     () const { return _base_mode & MAV_MODE_FLAG_HIL_ENABLED; }
     Actuators*      actuators                   () const { return _actuators; }
     bool            mavlinkSigning          () const { return _mavlinkSigning; }
+    QObject*        heatmapController           () { return _heatmapController; }
+
 
     void startCalibration   (QGCMAVLink::CalibrationType calType);
     void stopCalibration    (bool showError);
@@ -884,6 +892,11 @@ signals:
     void logEntry                       (uint32_t time_utc, uint32_t size, uint16_t id, uint16_t num_logs, uint16_t last_log_num);
     void logData                        (uint32_t ofs, uint16_t id, uint8_t count, const uint8_t* data);
 
+    // Signal emission function to start heat map functionality
+    void probabilityReceived(double latitude,
+                             double longitude,
+                             float probability);
+
 private slots:
     void _mavlinkMessageReceived            (LinkInterface* link, mavlink_message_t message);
     void _sendMessageMultipleNext           ();
@@ -1036,6 +1049,7 @@ void _activeVehicleChanged          (Vehicle* newActiveVehicle);
     VehicleObjectAvoidance*         _objectAvoidance                = nullptr;
     Autotune*                       _autotune                       = nullptr;
     GimbalController*               _gimbalController               = nullptr;
+    HeatmapController*              _heatmapController              = nullptr;
 
 #ifdef QGC_UTM_ADAPTER
     UTMSPVehicle*                    _utmspVehicle                    = nullptr;
