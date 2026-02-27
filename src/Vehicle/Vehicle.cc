@@ -132,12 +132,12 @@ Vehicle::Vehicle(LinkInterface*             link,
     connect(this,
             &Vehicle::probabilityReceived,
             this,
-            [this](float prob) {
+            [this](double lat, double lon, float prob) {
 
-                auto coord = this->coordinate();
+                // qDebug() << "LAMBDA RECEIVED: " << lat << lon << prob;
 
-                _heatmapController->addPoint(coord.latitude(),
-                                             coord.longitude(),
+                _heatmapController->addPoint(lat,
+                                             lon,
                                              prob);
             });
 
@@ -438,12 +438,12 @@ void Vehicle::resetCounters()
 
 void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t message)
 {
-    if (message.sysid != _id && message.sysid != 0) {
-        // We allow RADIO_STATUS messages which come from a link the vehicle is using to pass through and be handled
-        if (!(message.msgid == MAVLINK_MSG_ID_RADIO_STATUS && _vehicleLinkManager->containsLink(link))) {
-            return;
-        }
-    }
+    // if (message.sysid != _id && message.sysid != 0) {
+    //     // We allow RADIO_STATUS messages which come from a link the vehicle is using to pass through and be handled
+    //     if (!(message.msgid == MAVLINK_MSG_ID_RADIO_STATUS && _vehicleLinkManager->containsLink(link))) {
+    //         return;
+    //     }
+    // }
 
     // We give the link manager first whack since it it reponsible for adding new links
     _vehicleLinkManager->mavlinkMessageReceived(link, message);

@@ -239,28 +239,28 @@ FlightMap {
         showText: !pipMode
     }
 
-    // Add trajectory lines to the map
-    MapPolyline {
-        id:         trajectoryPolyline
-        line.width: 3
-        line.color: "red"
-        z:          QGroundControl.zOrderTrajectoryLines
-        visible:    !pipMode
+    // // Add trajectory lines to the map
+    // MapPolyline {
+    //     id:         trajectoryPolyline
+    //     line.width: 3
+    //     line.color: "red"
+    //     z:          QGroundControl.zOrderTrajectoryLines
+    //     visible:    !pipMode
 
-        Connections {
-            target:                 QGroundControl.multiVehicleManager
-            function onActiveVehicleChanged(activeVehicle) {
-                trajectoryPolyline.path = _activeVehicle ? _activeVehicle.trajectoryPoints.list() : []
-            }
-        }
+    //     Connections {
+    //         target:                 QGroundControl.multiVehicleManager
+    //         function onActiveVehicleChanged(activeVehicle) {
+    //             trajectoryPolyline.path = _activeVehicle ? _activeVehicle.trajectoryPoints.list() : []
+    //         }
+    //     }
 
-        Connections {
-            target:                             _activeVehicle ? _activeVehicle.trajectoryPoints : null
-            function onPointAdded(coordinate) { trajectoryPolyline.addCoordinate(coordinate) }
-            function onUpdateLastPoint(coordinate) { trajectoryPolyline.replaceCoordinate(trajectoryPolyline.pathLength() - 1, coordinate) }
-            function onPointsCleared() { trajectoryPolyline.path = [] }
-        }
-    }
+    //     Connections {
+    //         target:                             _activeVehicle ? _activeVehicle.trajectoryPoints : null
+    //         function onPointAdded(coordinate) { trajectoryPolyline.addCoordinate(coordinate) }
+    //         function onUpdateLastPoint(coordinate) { trajectoryPolyline.replaceCoordinate(trajectoryPolyline.pathLength() - 1, coordinate) }
+    //         function onPointsCleared() { trajectoryPolyline.path = [] }
+    //     }
+    // }
 
     // Add the vehicles to the map
     MapItemView {
@@ -305,7 +305,32 @@ FlightMap {
         delegate: MapCircle {
             center: QtPositioning.coordinate(latitude, longitude)
             radius: 10
-            color: Qt.rgba(1, 0, 0, probability)
+
+            color: {
+                var p = Math.max(0, Math.min(1, probability))
+
+                var r, g, b
+
+                if (p < 0.25) {
+                    r = 0
+                    g = p * 4
+                    b = 1
+                } else if (p < 0.5) {
+                    r = 0
+                    g = 1
+                    b = 1 - (p - 0.25) * 4
+                } else if (p < 0.75) {
+                    r = (p - 0.5) * 4
+                    g = 1
+                    b = 0
+                } else {
+                    r = 1
+                    g = 1 - (p - 0.75) * 4
+                    b = 0
+                }
+                // console.log("Correct prob:", p)
+                return Qt.rgba(r, g, b, 0.35)
+            }
         }
     }
 

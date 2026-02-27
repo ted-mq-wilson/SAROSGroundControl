@@ -11,18 +11,19 @@ int HeatmapController::rowCount(const QModelIndex &parent) const {
 }
 
 QVariant HeatmapController::data(const QModelIndex &index, int role) const {
-    if (!index.isValid())
+    // qDebug() << "DATA REQUESTED: " << role;
+
+    if (!index.isValid() || index.row() >= _points.count())
         return QVariant();
 
-    const DetectionPoint& point = _points[index.row()];
+    const DetectionPoint& point = _points.at(index.row());
 
     switch (role) {
         case LatitudeRole: return point.latitude;
         case LongitudeRole: return point.longitude;
         case ProbabilityRole: return point.probability;
+        default: return QVariant();
     }
-
-    return QVariant();
 }
 
 QHash<int, QByteArray> HeatmapController::roleNames() const {
@@ -34,6 +35,8 @@ QHash<int, QByteArray> HeatmapController::roleNames() const {
 }
 
 void HeatmapController::addPoint(double lat, double lon, float probability) {
+    // qDebug() << "ADDING POINT: " << lat << lon << probability;
+
     beginInsertRows(QModelIndex(), _points.count(), _points.count());
     _points.append({lat, lon, probability});
     endInsertRows();

@@ -280,7 +280,7 @@ public:
     Q_PROPERTY(bool     mavlinkSigning              READ mavlinkSigning             NOTIFY mavlinkSigningChanged)
 
 
-    Q_PROPERTY(QObject* heatmapController           READ heatmapController          CONSTANT)
+    Q_PROPERTY(QAbstractItemModel* heatmapController READ heatmapController          CONSTANT)
 
 
     /// Resets link status counters
@@ -565,7 +565,7 @@ public:
     bool            hilMode                     () const { return _base_mode & MAV_MODE_FLAG_HIL_ENABLED; }
     Actuators*      actuators                   () const { return _actuators; }
     bool            mavlinkSigning          () const { return _mavlinkSigning; }
-    QObject*        heatmapController           () { return _heatmapController; }
+    QAbstractItemModel* heatmapController        () { return _heatmapController; }
 
 
     void startCalibration   (QGCMAVLink::CalibrationType calType);
