@@ -304,7 +304,7 @@ FlightMap {
 
         delegate: MapCircle {
             center: QtPositioning.coordinate(latitude, longitude)
-            radius: 10
+            radius: 5
 
             color: {
                 var p = Math.max(0, Math.min(1, probability))
@@ -938,6 +938,54 @@ FlightMap {
             var dropPanel = mapClickDropPanelComponent.createObject(mainWindow, { mapClickCoord: clickCoord, clickRect: Qt.rect(position.x, position.y, 0, 0) })
             dropPanel.open()
         }
+    }
+
+    Rectangle {
+        id: probabilityBanner
+        anchors.top: parent.top
+        anchors.topMargin: 75
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width * 0.6
+        height: 40
+        radius: 6
+        z: 9999
+
+        visible: _activeVehicle
+
+        color: {
+            var p = _activeVehicle ?
+                    Math.max(0, Math.min(1, _activeVehicle.targetProbability)) : 0
+
+            var r, g, b
+
+            if (p < 0.25) {
+                r = 0
+                g = p * 4
+                b = 1
+            } else if (p < 0.5) {
+                r = 0
+                g = 1
+                b = 1 - (p - 0.25) * 4
+            } else if (p < 0.75) {
+                r = (p - 0.5) * 4
+                g = 1
+                b = 0
+            } else {
+                r = 1
+                g = 1 - (p - 0.75) * 4
+                b = 0
+            }
+
+            return Qt.rgba(r, g, b, 0.35)
+        }
+
+        Text {
+                anchors.centerIn: parent
+                text: "Prob: " +
+                      (_activeVehicle.targetProbability * 100).toFixed(1) + "%"
+                color: "white"
+                font.bold: true
+            }
     }
 
     MapScale {

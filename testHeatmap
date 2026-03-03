@@ -12,7 +12,7 @@ master = mavutil.mavlink_connection(
     dialect='ardupilotmega'
 )
 
-iteration = 0
+iteration = 50
 increasing = True
 
 while True:
@@ -23,7 +23,7 @@ while True:
         iteration += 1
     else:
         iteration -= 1
-        increasing = True if iteration == 0 else False
+        increasing = True if iteration == 50 else False
 
     time_boot_ms = int(time.time() * 1000) % 4294967295
 

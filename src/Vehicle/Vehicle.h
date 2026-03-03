@@ -280,7 +280,10 @@ public:
     Q_PROPERTY(bool     mavlinkSigning              READ mavlinkSigning             NOTIFY mavlinkSigningChanged)
 
 
-    Q_PROPERTY(QAbstractItemModel* heatmapController READ heatmapController          CONSTANT)
+    // For custom search patterns
+    Q_PROPERTY(QAbstractItemModel* heatmapController READ heatmapController         CONSTANT)
+    Q_PROPERTY(double   targetProbability           READ targetProbability          NOTIFY targetProbabilityChanged)
+    Q_PROPERTY(int      searchState                 READ searchState                NOTIFY searchStateChanged)
 
 
     /// Resets link status counters
@@ -565,7 +568,12 @@ public:
     bool            hilMode                     () const { return _base_mode & MAV_MODE_FLAG_HIL_ENABLED; }
     Actuators*      actuators                   () const { return _actuators; }
     bool            mavlinkSigning          () const { return _mavlinkSigning; }
-    QAbstractItemModel* heatmapController        () { return _heatmapController; }
+
+
+
+    QAbstractItemModel* heatmapController       () { return _heatmapController; }
+    double          targetProbability           () const { return _targetProbability; }
+    int             searchState                 () const { return static_cast<int>(_searchState); }
 
 
     void startCalibration   (QGCMAVLink::CalibrationType calType);
@@ -897,6 +905,10 @@ signals:
                              double longitude,
                              float probability);
 
+    // Changing search patterns based off of probabilities
+    void targetProbabilityChanged();
+    void searchStateChanged();
+
 private slots:
     void _mavlinkMessageReceived            (LinkInterface* link, mavlink_message_t message);
     void _sendMessageMultipleNext           ();
@@ -976,6 +988,11 @@ void _activeVehicleChanged          (Vehicle* newActiveVehicle);
     void _setMessageInterval            (int messageId, int rate);
     EventHandler& _eventHandler         (uint8_t compid);
     bool setFlightModeCustom            (const QString& flightMode, uint8_t* base_mode, uint32_t* custom_mode);
+    void _evaluateSearchState           ();
+    void _enterOrbitMode                ();
+    void _exitOrbitMode                 ();
+    void _enterManualOverride           ();
+
 
     static void _rebootCommandResultHandler(void* resultHandlerData, int compId, const mavlink_command_ack_t& ack, MavCmdResultFailureCode_t failureCode);
 
@@ -1034,6 +1051,15 @@ void _activeVehicleChanged          (Vehicle* newActiveVehicle);
     bool            _readyToFly                             = false;
     bool            _allSensorsHealthy                      = true;
     bool            _mavlinkSigning                         = false;
+    double          _targetProbability                      = 0.0;
+
+    enum class SearchState {
+        NormalSearch = 0,
+        OrbitTarget = 1,
+        ManualOverride = 2
+    };
+
+    SearchState     _searchState                            = SearchState::NormalSearch;
 
     SysStatusSensorInfo _sysStatusSensorInfo;
 

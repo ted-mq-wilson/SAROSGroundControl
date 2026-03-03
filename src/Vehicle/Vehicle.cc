@@ -438,12 +438,12 @@ void Vehicle::resetCounters()
 
 void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t message)
 {
-    // if (message.sysid != _id && message.sysid != 0) {
-    //     // We allow RADIO_STATUS messages which come from a link the vehicle is using to pass through and be handled
-    //     if (!(message.msgid == MAVLINK_MSG_ID_RADIO_STATUS && _vehicleLinkManager->containsLink(link))) {
-    //         return;
-    //     }
-    // }
+    if (message.sysid != _id && message.sysid != 0) {
+        // We allow RADIO_STATUS messages which come from a link the vehicle is using to pass through and be handled
+        if (!(message.msgid == MAVLINK_MSG_ID_RADIO_STATUS && _vehicleLinkManager->containsLink(link))) {
+            return;
+        }
+    }
 
     // We give the link manager first whack since it it reponsible for adding new links
     _vehicleLinkManager->mavlinkMessageReceived(link, message);
@@ -451,12 +451,6 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
     //-- Check link status
     _messagesReceived++;
     emit messagesReceivedChanged();
-
-    // qDebug() << "MavLink message recieved: "
-    //          << "ID: " << message.msgid
-    //          << "SYS: " << message.sysid
-    //          << "COMP: " << message.compid
-    //          << "LEN: " << message.len;
 
     if (message.msgid == MAVLINK_MSG_ID_NAMED_VALUE_FLOAT) {
         mavlink_named_value_float_t data;
@@ -467,13 +461,20 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
 
         qDebug() << "Received float:" << name << value;
 
-        if (name == "prob" && _coordinate.isValid()) { // TODO: rename based on the name of the send value
+        if (name == "prob" && _coordinate.isValid()) {
             float probability = data.value;
 
             double lat = _coordinate.latitude();
             double lon = _coordinate.longitude();
 
             emit probabilityReceived(lat, lon, probability);
+
+
+            if (!qFuzzyCompare(double(probability), _targetProbability)) {
+                _targetProbability = probability;
+                emit targetProbabilityChanged();
+                _evaluateSearchState();
+            }
         }
     }
 
@@ -820,6 +821,55 @@ void Vehicle::_handleHighLatency(mavlink_message_t& message)
     _headingFact.setRawValue((double)highLatency.heading * 2.0);
     _altitudeRelativeFact.setRawValue(qQNaN());
     _altitudeAMSLFact.setRawValue(coordinate.altitude);
+}
+
+/*---------------------------------------------------------------------------*/
+/*===========================================================================*/
+/*                 Probabilty Determined Search Patterns                     */
+/*===========================================================================*/
+
+void Vehicle::_evaluateSearchState()
+{
+    switch (_searchState) {
+
+        case SearchState::NormalSearch:
+            if (_targetProbability > 0.95) {
+                _enterOrbitMode();
+            }
+            break;
+
+        case SearchState::OrbitTarget:
+            if (_targetProbability < 0.85) {   // hysteresis
+                _exitOrbitMode();
+            }
+            break;
+    }
+}
+
+void Vehicle::_exitOrbitMode()
+{
+    _searchState = SearchState::NormalSearch;
+    emit searchStateChanged();
+
+    setFlightMode("AUTO");
+}
+
+void Vehicle::_enterOrbitMode() {
+
+    _searchState = SearchState::OrbitTarget;
+    emit searchStateChanged();
+
+    // Pause mission and orbit current position
+    setFlightMode("CIRCLE");
+}
+
+void Vehicle::_enterManualOverride() {
+    qDebug() << "Switching to Manual Mode";
+
+    _searchState = SearchState::ManualOverride;
+    emit searchStateChanged();
+
+    setFlightMode("Manual");
 }
 
 // TODO: VehicleFactGroup
