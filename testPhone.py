@@ -12,19 +12,7 @@ master = mavutil.mavlink_connection(
     dialect='ardupilotmega'
 )
 
-iteration = 25
-increasing = True
-
 while True:
-    probability = 0.01 * iteration
-    print(probability)
-
-    if iteration < 100 and increasing:
-        iteration += 1
-    else:
-        iteration -= 1
-        increasing = True if iteration == 50 else False
-
     time_boot_ms = int(time.time() * 1000) % 4294967295
 
     # Send heartbeat (important)
@@ -34,10 +22,13 @@ while True:
         0, 0, 0
     )
 
+    mac_address = float(input("Enter Foot Radius: "))
+
     master.mav.named_value_float_send(
-        time_boot_ms,
-        b"PROB",
-        probability
+            time_boot_ms,
+            b"PHONE",
+            mac_address
     )
 
     time.sleep(1)
+

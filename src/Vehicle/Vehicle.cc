@@ -110,6 +110,7 @@ Vehicle::Vehicle(LinkInterface*             link,
     , _terrainFactGroup             (this)
     , _terrainProtocolHandler       (new TerrainProtocolHandler(this, &_terrainFactGroup, this))
     , _heatmapController            (new HeatmapController(this))
+    , _phoneSignalController        (new PhoneSignalController(this))
 {
     connect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged, this, &Vehicle::_activeVehicleChanged);
 
@@ -139,6 +140,16 @@ Vehicle::Vehicle(LinkInterface*             link,
                 _heatmapController->addPoint(lat,
                                              lon,
                                              prob);
+            });
+
+    connect(this,
+            &Vehicle::phoneSignalRecieved,
+            this,
+            [this](double lat, double lon, float mac_address) {
+
+                _phoneSignalController->addPoint(lat,
+                                                 lon,
+                                                 mac_address);
             });
 
     _commonInit(link);
@@ -461,7 +472,8 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
 
         qDebug() << "Received float:" << name << value;
 
-        if (name == "prob" && _coordinate.isValid()) {
+        if (name == "PROB" && _coordinate.isValid()) {
+            qDebug() << "Prob value: " << data.value;
             float probability = data.value;
 
             double lat = _coordinate.latitude();
@@ -474,6 +486,17 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
                 _targetProbability = probability;
                 emit targetProbabilityChanged();
                 _evaluateSearchState();
+            }
+        }
+
+        if (name == "PHONE" && _coordinate.isValid()) {
+            float mac_address = data.value;
+            if (mac_address != 0) {
+                qDebug() << "Phone value: " << data.value;
+                double lat = _coordinate.latitude();
+                double lon = _coordinate.longitude();
+
+                emit phoneSignalRecieved(lat, lon, mac_address);
             }
         }
     }
@@ -830,20 +853,21 @@ void Vehicle::_handleHighLatency(mavlink_message_t& message)
 
 void Vehicle::_evaluateSearchState()
 {
-    switch (_searchState) {
+    // Not supported anymore
+    // switch (_searchState) {
 
-        case SearchState::NormalSearch:
-            if (_targetProbability > 0.95) {
-                _enterOrbitMode();
-            }
-            break;
+    //     case SearchState::NormalSearch:
+    //         if (_targetProbability > 0.95) {
+    //             _enterOrbitMode();
+    //         }
+    //         break;
 
-        case SearchState::OrbitTarget:
-            if (_targetProbability < 0.85) {   // hysteresis
-                _exitOrbitMode();
-            }
-            break;
-    }
+    //     case SearchState::OrbitTarget:
+    //         if (_targetProbability < 0.85) {   // hysteresis
+    //             _exitOrbitMode();
+    //         }
+    //         break;
+    // }
 }
 
 void Vehicle::_exitOrbitMode()

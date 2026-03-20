@@ -21,6 +21,8 @@ qt_add_qml_module(QGroundControlModule
     IMPORTS
         QGC
     NO_PLUGIN
+    SOURCES Vehicle/PhoneSignalController.cc
+    SOURCES Vehicle/PhoneSignalController.h
 )
 
 # ============================================================================

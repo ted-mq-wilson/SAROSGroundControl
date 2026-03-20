@@ -40,6 +40,7 @@
 #include "EscStatusFactGroupListModel.h"
 
 #include "HeatmapController.h"
+#include "PhoneSignalController.h"
 
 class Actuators;
 class AutoPilotPlugin;
@@ -284,7 +285,7 @@ public:
     Q_PROPERTY(QAbstractItemModel* heatmapController READ heatmapController         CONSTANT)
     Q_PROPERTY(double   targetProbability           READ targetProbability          NOTIFY targetProbabilityChanged)
     Q_PROPERTY(int      searchState                 READ searchState                NOTIFY searchStateChanged)
-
+    Q_PROPERTY(QAbstractItemModel* phoneSignalController READ phoneSignalController CONSTANT)
 
     /// Resets link status counters
     Q_INVOKABLE void resetCounters  ();
@@ -574,6 +575,7 @@ public:
     QAbstractItemModel* heatmapController       () { return _heatmapController; }
     double          targetProbability           () const { return _targetProbability; }
     int             searchState                 () const { return static_cast<int>(_searchState); }
+    QAbstractItemModel* phoneSignalController   () { return _phoneSignalController; }
 
 
     void startCalibration   (QGCMAVLink::CalibrationType calType);
@@ -905,6 +907,10 @@ signals:
                              double longitude,
                              float probability);
 
+    void phoneSignalRecieved(double latitude,
+                             double longitude,
+                             float mac_address);
+
     // Changing search patterns based off of probabilities
     void targetProbabilityChanged();
     void searchStateChanged();
@@ -1076,6 +1082,7 @@ void _activeVehicleChanged          (Vehicle* newActiveVehicle);
     Autotune*                       _autotune                       = nullptr;
     GimbalController*               _gimbalController               = nullptr;
     HeatmapController*              _heatmapController              = nullptr;
+    PhoneSignalController*          _phoneSignalController          = nullptr;
 
 #ifdef QGC_UTM_ADAPTER
     UTMSPVehicle*                    _utmspVehicle                    = nullptr;

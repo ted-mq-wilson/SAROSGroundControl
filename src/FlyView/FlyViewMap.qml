@@ -39,6 +39,13 @@ FlightMap {
     property bool   _keepVehicleCentered:       pipMode ? true : false
     property bool   _saveZoomLevelSetting:      true
 
+    property var    latestHighProbTarget:       null
+    property var    highProbTarget:             null
+    property var    lastPhoneSignal:            null
+    property real   bestProbability:            0.0
+    property var    bestProbTarget:             null
+
+
     ListModel {
         id: pendingWaypoints // Waypoints made by user to be added to the mission
     }
@@ -304,7 +311,27 @@ FlightMap {
 
         delegate: MapCircle {
             center: QtPositioning.coordinate(latitude, longitude)
-            radius: 5
+            radius: 1
+            Component.onCompleted: {
+                var p = probability
+
+                if (p > _root.bestProbability) {
+                    _root.bestProbability = p
+                    _root.bestProbTarget = {
+                        latitude: latitude,
+                        longitude: longitude,
+                        probability: p
+                    }
+                }
+
+                if (p >= 0.95) {
+                    _root.latestHighProbTarget = {
+                        latitude: latitude,
+                        longitude: longitude,
+                        probability: p
+                    }
+                }
+            }
 
             color: {
                 var p = Math.max(0, Math.min(1, probability))
@@ -330,6 +357,24 @@ FlightMap {
                 }
                 // console.log("Correct prob:", p)
                 return Qt.rgba(r, g, b, 0.35)
+            }
+        }
+    }
+
+    // Add Phone Signals sensor data on the map
+    MapItemView {
+        model: QGroundControl.multiVehicleManager.activeVehicle.phoneSignalController
+
+        delegate: MapCircle {
+            center: QtPositioning.coordinate(latitude, longitude)
+            radius: mac_address * 0.3048 // mac_address is actually a message of feet. QML here expects meters
+            color: Qt.rgba(1, 0, 0, 0.35)
+            Component.onCompleted: {
+                _root.lastPhoneSignal = {
+                    latitude: latitude,
+                    longitude: longitude,
+                    radius: mac_address
+                }
             }
         }
     }
@@ -986,6 +1031,98 @@ FlightMap {
                 color: "white"
                 font.bold: true
             }
+    }
+
+    // Results UI Display
+    Rectangle {
+        id: infoPanel
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.topMargin: 75
+        anchors.margins: 20
+
+        width: 420
+        color: "#80000000"
+        radius: 14
+        z: 9999
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 18
+            spacing: 18
+
+            // 🏆 BEST EVER PROBABILITY
+            Column {
+                spacing: 6
+
+                Text {
+                    text: "🏆 Best Probability"
+                    color: "white"
+                    font.bold: true
+                    font.pixelSize: 26
+                }
+
+                Text {
+                    text: _root.bestProbTarget ?
+                          "Lat: " + _root.bestProbTarget.latitude.toFixed(5) +
+                          "\nLon: " + _root.bestProbTarget.longitude.toFixed(5) +
+                          "\nProb: " + (_root.bestProbTarget.probability * 100).toFixed(1) + "%"
+                          :
+                          "None"
+
+                    color: "white"
+                    font.pixelSize: 22
+                }
+            }
+
+            // 🔥 LATEST HIGH CONFIDENCE
+            Column {
+                spacing: 6
+
+                Text {
+                    text: "🔥 Latest >95%"
+                    color: "white"
+                    font.bold: true
+                    font.pixelSize: 26
+                }
+
+                Text {
+                    text: _root.latestHighProbTarget ?
+                          "Lat: " + _root.latestHighProbTarget.latitude.toFixed(5) +
+                          "\nLon: " + _root.latestHighProbTarget.longitude.toFixed(5) +
+                          "\nProb: " + (_root.latestHighProbTarget.probability * 100).toFixed(1) + "%"
+                          :
+                          "None"
+
+                    color: "white"
+                    font.pixelSize: 22
+                }
+            }
+
+            // 📡 PHONE SIGNAL
+            Column {
+                spacing: 6
+
+                Text {
+                    text: "📡 Phone Signal"
+                    color: "white"
+                    font.bold: true
+                    font.pixelSize: 26
+                }
+
+                Text {
+                    text: _root.lastPhoneSignal ?
+                          "Lat: " + _root.lastPhoneSignal.latitude.toFixed(5) +
+                          "\nLon: " + _root.lastPhoneSignal.longitude.toFixed(5) +
+                          "\nRadius: " + _root.lastPhoneSignal.radius.toFixed(0) + " ft"
+                          :
+                          "None"
+
+                    color: "white"
+                    font.pixelSize: 22
+                }
+            }
+        }
     }
 
     MapScale {
